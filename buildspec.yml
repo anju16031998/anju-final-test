@@ -1,0 +1,33 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "us-east-1"
+    # REPLACE WITH YOUR REAL ID AND REPO NAME
+    ECR_URI: "002540790985.dkr.ecr.us-east-1.amazonaws.com/anju-repo"
+
+phases:
+  install:
+    commands:
+      - echo "Installing dependencies..."
+  pre_build:
+    commands:
+      - echo "Listing files received from Source stage:"
+      - ls -R  # <--- ADD THIS LINE! This will list all files recursively.
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
+      - REPOSITORY_URI=$ECR_URI
+      - IMAGE_TAG=latest
+# ... rest of the file remains the same
+  build:
+    commands:
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+  post_build:
+    commands:
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:latest
+      - printf '[{"name":"app","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+
+artifacts:
+    files: imagedefinitions.json
