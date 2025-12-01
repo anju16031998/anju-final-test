@@ -1,40 +1,25 @@
 version: 0.2
 
-env:
-  variables:
-    AWS_REGION: "us-east-1"
-    # IMPORTANT: CHANGE THIS to your real ECR repo URI.
-    # It must match the repo from Terraform: "anju-final-test-repo"
-    # Example with your account ID:
-    # 002540790985.dkr.ecr.us-east-1.amazonaws.com/anju-final-test-repo
-    REPOSITORY_URI: "002540790985.dkr.ecr.us-east-1.amazonaws.com/anju-final-test-repo"
-
 phases:
-  install:
-    commands:
-      - echo "Install phase - no extra dependencies."
-
   pre_build:
     commands:
-      - echo "Listing source files..."
-      - ls -R
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-      - IMAGE_TAG=latest
-      # If you want unique tags per commit, you could do:
-      # - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 075737418482.dkr.ecr.us-east-1.amazonaws.com
+      - REPOSITORY_URI=075737418482.dkr.ecr.us-east-1.amazonaws.com/anju-final-test-repo
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
 
   build:
     commands:
-      - echo "Building Docker image..."
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - echo Building Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
-      - echo "Pushing Docker image to ECR..."
+      - echo Pushing Docker image...
+      - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "Generating imagedefinitions.json for ECS deploy..."
-      # VERY IMPORTANT: name MUST match container_name in ECS task/service: "app"
       - printf '[{"name":"app","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
